@@ -299,7 +299,11 @@ public sealed class ZadaniaLinq
     /// </summary>
     public IEnumerable<string> Wyzwanie01_StudenciZWiecejNizJednymAktywnymPrzedmiotem()
     {
-        throw Niezaimplementowano(nameof(Wyzwanie01_StudenciZWiecejNizJednymAktywnymPrzedmiotem));
+        return DaneUczelni.Zapisy
+            .Where(z => z.CzyAktywny)
+            .GroupBy(z => z.StudentId)
+            .Where(g => g.Count() > 1)
+            .Join(DaneUczelni.Studenci, g => g.Key, s => s.Id, (g, s) => $"{s.Imie} {s.Nazwisko} - Liczba aktywnych przedmiotów: {g.Count()}");
     }
 
     /// <summary>
@@ -316,7 +320,11 @@ public sealed class ZadaniaLinq
     /// </summary>
     public IEnumerable<string> Wyzwanie02_PrzedmiotyStartujaceWKwietniuBezOcenKoncowych()
     {
-        throw Niezaimplementowano(nameof(Wyzwanie02_PrzedmiotyStartujaceWKwietniuBezOcenKoncowych));
+        return DaneUczelni.Przedmioty
+            .Where(p => p.DataStartu.Year == 2026 && p.DataStartu.Month == 4)
+            .GroupJoin(DaneUczelni.Zapisy, p => p.Id, z => z.PrzedmiotId, (p, zapisy) => new { Przedmiot = p, Zapisy = zapisy })
+            .Where(pz => pz.Zapisy.Any() && pz.Zapisy.All(z => z.OcenaKoncowa == null))
+            .Select(pz => $"{pz.Przedmiot.Nazwa}");
     }
 
     /// <summary>
@@ -334,7 +342,16 @@ public sealed class ZadaniaLinq
     /// </summary>
     public IEnumerable<string> Wyzwanie03_ProwadzacyISredniaOcenNaIchPrzedmiotach()
     {
-        throw Niezaimplementowano(nameof(Wyzwanie03_ProwadzacyISredniaOcenNaIchPrzedmiotach));
+        return DaneUczelni.Prowadzacy
+            .Select(pr => new 
+            {
+                Prowadzacy = pr,
+                Oceny = DaneUczelni.Przedmioty
+                    .Where(p => p.ProwadzacyId == pr.Id)
+                    .Join(DaneUczelni.Zapisy.Where(z => z.OcenaKoncowa.HasValue), 
+                        p => p.Id, z => z.PrzedmiotId, (p, z) => z.OcenaKoncowa.Value)
+            })
+            .Select(x => $"{x.Prowadzacy.Imie} {x.Prowadzacy.Nazwisko} - Średnia: {(x.Oceny.Any() ? x.Oceny.Average().ToString("F2") : "Brak ocen")}");
     }
 
     /// <summary>
@@ -352,7 +369,11 @@ public sealed class ZadaniaLinq
     /// </summary>
     public IEnumerable<string> Wyzwanie04_MiastaILiczbaAktywnychZapisow()
     {
-        throw Niezaimplementowano(nameof(Wyzwanie04_MiastaILiczbaAktywnychZapisow));
+        return DaneUczelni.Studenci
+            .Join(DaneUczelni.Zapisy.Where(z => z.CzyAktywny), s => s.Id, z => z.StudentId, (s, z) => s)
+            .GroupBy(s => s.Miasto)
+            .OrderByDescending(g => g.Count())
+            .Select(g => $"{g.Key} - Liczba aktywnych zapisów: {g.Count()}");
     }
 
     private static NotImplementedException Niezaimplementowano(string nazwaMetody)
